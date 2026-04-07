@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAgentStore } from "@/store/agentStore";
+import UserMenu from "@/components/auth/UserMenu";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -101,19 +102,14 @@ export default function Header() {
           {/* Right side actions */}
           <div className="ml-auto flex items-center gap-3">
             {/* Desktop nav */}
-            <nav className="hidden items-center gap-1 md:flex">
+            <nav className="hidden items-center gap-2 md:flex">
               <Link
                 href="/create"
                 className="rounded-[6px] bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition-all duration-150 hover:bg-[#1D4ED8] active:bg-[#1E40AF]"
               >
                 Create Agent
               </Link>
-              <Link
-                href="/login"
-                className="rounded-[6px] border border-[#2A3A4E] px-4 py-2 text-sm font-medium text-[#00D9FF] transition-all duration-150 hover:border-[#2563EB] hover:bg-[#0A0E27]"
-              >
-                Sign In
-              </Link>
+              <UserMenu />
             </nav>
 
             {/* Mobile hamburger */}

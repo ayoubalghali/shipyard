@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SessionProvider from "@/components/auth/SessionProvider";
 
 export const metadata: Metadata = {
   title: "Shipyard — Build & Share AI Agents",
@@ -33,7 +34,9 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased bg-black text-white min-h-screen">
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );
