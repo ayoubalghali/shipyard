@@ -2,15 +2,37 @@ import type { Metadata } from "next";
 import "./globals.css";
 import SessionProvider from "@/components/auth/SessionProvider";
 
+const BASE_URL = process.env.NEXTAUTH_URL ?? "https://shipyard.ai";
+
 export const metadata: Metadata = {
-  title: "Shipyard — Build & Share AI Agents",
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "Shipyard — Build & Share AI Agents",
+    template: "%s — Shipyard",
+  },
   description:
-    "The no-code platform for creating, sharing, and monetizing AI agents. Build powerful agents in minutes without coding.",
-  keywords: ["AI agents", "no-code", "AI builder", "Ollama", "Claude AI"],
+    "The no-code platform for creating, sharing, and monetizing AI agents. Build powerful agents in minutes without writing a single line of code.",
+  keywords: ["AI agents", "no-code AI", "AI builder", "Ollama", "Claude AI", "automation", "LLM"],
+  authors: [{ name: "Shipyard" }],
+  creator: "Shipyard",
   openGraph: {
     title: "Shipyard — Build & Share AI Agents",
-    description: "Create, share, and monetize AI agents without code.",
+    description: "Create, share, and monetize AI agents without code. Run locally with Ollama or power up with Claude.",
+    url: BASE_URL,
+    siteName: "Shipyard",
     type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Shipyard — Build & Share AI Agents",
+    description: "Create, share, and monetize AI agents without code.",
+    creator: "@shipyardai",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-video-preview": -1, "max-image-preview": "large" },
   },
 };
 
