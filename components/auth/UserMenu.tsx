@@ -29,20 +29,12 @@ export default function UserMenu() {
 
   if (!session) {
     return (
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => signIn()}
-          className="rounded-[6px] border border-[#2A3A4E] px-3 py-1.5 text-sm font-medium text-[#00D9FF] transition-all hover:border-[#2563EB] hover:bg-[#0A0E27]"
-        >
-          Sign In
-        </button>
-        <Link
-          href="/create"
-          className="hidden rounded-[6px] bg-[#2563EB] px-3 py-1.5 text-sm font-medium text-white transition-all hover:bg-[#1D4ED8] sm:block"
-        >
-          Create Agent
-        </Link>
-      </div>
+      <button
+        onClick={() => signIn()}
+        className="rounded-[6px] border border-[#2A3A4E] px-3 py-1.5 text-sm font-medium text-[#00D9FF] transition-all hover:border-[#2563EB] hover:bg-[#0A0E27]"
+      >
+        Sign In
+      </button>
     );
   }
 
