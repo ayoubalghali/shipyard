@@ -6,6 +6,7 @@ import { Agent } from "@/lib/types";
 
 interface AgentCardProps {
   agent: Agent;
+  index?: number;
   onUseClick?: (agent: Agent) => void;
 }
 
@@ -57,7 +58,7 @@ function CreatorAvatar({ initials, isVerified }: { initials: string; isVerified:
   );
 }
 
-export default function AgentCard({ agent, onUseClick }: AgentCardProps) {
+export default function AgentCard({ agent, index = 0, onUseClick }: AgentCardProps) {
   const handleUseClick = (e: React.MouseEvent) => {
     e.preventDefault();
     onUseClick?.(agent);
@@ -67,7 +68,7 @@ export default function AgentCard({ agent, onUseClick }: AgentCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1], delay: index * 0.04 }}
       className="animate-gpu"
     >
       <Link

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { db, DB_AVAILABLE } from "@/lib/db";
 import { MOCK_AGENTS } from "@/lib/mockData";
 import { Agent } from "@/lib/types";
 
-// In-memory store for newly created agents (persists across requests in dev,
-// reset on server restart — full DB persistence comes with Prisma in Week 3+)
-const createdAgents: Agent[] = [];
+// In-memory fallback store for environments without a DB
+const memAgents: Agent[] = [];
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -14,7 +16,51 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 100);
   const offset = parseInt(searchParams.get("offset") ?? "0", 10);
 
-  let agents = [...createdAgents, ...MOCK_AGENTS];
+  // ── Prisma path ────────────────────────────────────────────────────────────
+  if (DB_AVAILABLE) {
+    try {
+      const where = {
+        status: "published",
+        is_public: true,
+        ...(category ? { category: { equals: category, mode: "insensitive" as const } } : {}),
+        ...(search
+          ? {
+              OR: [
+                { name: { contains: search, mode: "insensitive" as const } },
+                { description: { contains: search, mode: "insensitive" as const } },
+                { tags: { has: search } },
+              ],
+            }
+          : {}),
+      };
+
+      const orderBy =
+        sort === "highest_rated"
+          ? { rating: "desc" as const }
+          : sort === "newest"
+          ? { created_at: "desc" as const }
+          : { usage_count: "desc" as const };
+
+      const [total, agents] = await Promise.all([
+        db.agent.count({ where }),
+        db.agent.findMany({
+          where,
+          orderBy,
+          skip: offset,
+          take: limit,
+          include: { creator: { select: { id: true, name: true, avatar_url: true, is_verified: true } } },
+        }),
+      ]);
+
+      return NextResponse.json({ agents, total, hasMore: offset + limit < total });
+    } catch (err) {
+      console.error("GET /api/agents DB error:", err);
+      // Fall through to mock
+    }
+  }
+
+  // ── Mock fallback ──────────────────────────────────────────────────────────
+  let agents = [...memAgents, ...MOCK_AGENTS];
 
   if (search) {
     agents = agents.filter(
@@ -25,11 +71,9 @@ export async function GET(req: NextRequest) {
         a.tags.some((t) => t.toLowerCase().includes(search))
     );
   }
-
   if (category) {
     agents = agents.filter((a) => a.category.toLowerCase() === category);
   }
-
   switch (sort) {
     case "most_used":
     case "trending":
@@ -44,17 +88,13 @@ export async function GET(req: NextRequest) {
   }
 
   const total = agents.length;
-  const paginated = agents.slice(offset, offset + limit);
-
-  return NextResponse.json({
-    agents: paginated,
-    total,
-    hasMore: offset + limit < total,
-  });
+  return NextResponse.json({ agents: agents.slice(offset, offset + limit), total, hasMore: offset + limit < total });
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+
     const body = (await req.json()) as {
       name?: string;
       description?: string;
@@ -69,17 +109,38 @@ export async function POST(req: NextRequest) {
       is_public?: boolean;
     };
 
-    // Validate required fields
-    if (!body.name?.trim()) {
-      return NextResponse.json({ error: "name is required" }, { status: 400 });
-    }
-    if (!body.description?.trim()) {
-      return NextResponse.json({ error: "description is required" }, { status: 400 });
-    }
-    if (!body.prompt?.trim()) {
-      return NextResponse.json({ error: "prompt is required" }, { status: 400 });
+    if (!body.name?.trim())        return NextResponse.json({ error: "name is required" }, { status: 400 });
+    if (!body.description?.trim()) return NextResponse.json({ error: "description is required" }, { status: 400 });
+    if (!body.prompt?.trim())      return NextResponse.json({ error: "prompt is required" }, { status: 400 });
+
+    // ── Prisma path ──────────────────────────────────────────────────────────
+    if (DB_AVAILABLE && session?.user?.email) {
+      const user = await db.user.findUnique({ where: { email: session.user.email } });
+      if (!user) return NextResponse.json({ error: "User not found" }, { status: 401 });
+
+      const agent = await db.agent.create({
+        data: {
+          name: body.name.trim(),
+          description: body.description.trim(),
+          category: body.category ?? "Workflows",
+          tags: body.tags ?? [],
+          prompt: body.prompt.trim(),
+          parameters: (body.parameters ?? []) as object,
+          system_prompt: body.system_prompt,
+          default_model: body.default_model ?? "ollama",
+          temperature: body.temperature ?? 0.7,
+          max_tokens: body.max_tokens ?? 2000,
+          is_public: body.is_public ?? true,
+          status: "published",
+          creator_id: user.id,
+        },
+        include: { creator: { select: { id: true, name: true, avatar_url: true, is_verified: true } } },
+      });
+
+      return NextResponse.json({ agent, message: "Agent created successfully" }, { status: 201 });
     }
 
+    // ── Mock fallback ────────────────────────────────────────────────────────
     const newAgent: Agent = {
       id: `agent_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       name: body.name.trim(),
@@ -89,12 +150,7 @@ export async function POST(req: NextRequest) {
       rating: 0,
       usageCount: 0,
       createdAt: new Date().toISOString(),
-      creator: {
-        id: "current_user",
-        name: "You",
-        avatar: "YO",
-        isVerified: false,
-      },
+      creator: { id: "current_user", name: "You", avatar: "YO", isVerified: false },
       prompt: body.prompt.trim(),
       parameters: (body.parameters as Agent["parameters"]) ?? [],
       defaultModel: (body.default_model as "claude" | "ollama") ?? "ollama",
@@ -104,15 +160,8 @@ export async function POST(req: NextRequest) {
       status: "published",
     };
 
-    createdAgents.unshift(newAgent);
-
-    return NextResponse.json(
-      {
-        agent: newAgent,
-        message: "Agent created successfully",
-      },
-      { status: 201 }
-    );
+    memAgents.unshift(newAgent);
+    return NextResponse.json({ agent: newAgent, message: "Agent created successfully" }, { status: 201 });
   } catch (error) {
     console.error("POST /api/agents error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
