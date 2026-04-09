@@ -10,6 +10,7 @@ import ModelSelector from "@/components/agent-detail/ModelSelector";
 import AdvancedOptions from "@/components/agent-detail/AdvancedOptions";
 import ExecutionOutput, { ExecutionRun } from "@/components/agent-detail/ExecutionOutput";
 import PreviousRuns from "@/components/agent-detail/PreviousRuns";
+import AgentReviews from "@/components/reviews/AgentReviews";
 
 interface AgentDetailClientProps {
   agent: Agent & { parameters: AgentParameter[] };
@@ -223,6 +224,12 @@ export default function AgentDetailClient({
                   <PreviousRuns runs={runs} onSelect={handleSelectRun} />
                 </section>
               )}
+
+              {/* Reviews */}
+              <section aria-labelledby="reviews-heading">
+                <h2 id="reviews-heading" className="sr-only">Reviews</h2>
+                <AgentReviews agentId={agent.id} />
+              </section>
             </div>
           </motion.div>
         </div>
