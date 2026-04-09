@@ -2,19 +2,32 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAgentStore } from "@/store/agentStore";
 import UserMenu from "@/components/auth/UserMenu";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { searchQuery, setSearchQuery } = useAgentStore();
+  const router = useRouter();
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(e.target.value);
     },
     [setSearchQuery]
+  );
+
+  const handleSearchSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (searchQuery.trim()) {
+        router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      }
+    },
+    [searchQuery, router]
   );
 
   return (
@@ -51,7 +64,7 @@ export default function Header() {
           </Link>
 
           {/* Search bar — centered, hidden on mobile */}
-          <div className="mx-4 hidden flex-1 max-w-xl md:flex">
+          <form onSubmit={handleSearchSubmit} className="mx-4 hidden flex-1 max-w-xl md:flex">
             <div className="relative w-full">
               <svg
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B7280]"
@@ -97,18 +110,37 @@ export default function Header() {
                 </button>
               )}
             </div>
-          </div>
+          </form>
 
           {/* Right side actions */}
           <div className="ml-auto flex items-center gap-3">
             {/* Desktop nav */}
             <nav className="hidden items-center gap-2 md:flex">
               <Link
+                href="/explore"
+                className="rounded-[6px] px-3 py-2 text-sm text-[#A3A3A3] transition-colors hover:text-white"
+              >
+                Explore
+              </Link>
+              <Link
+                href="/favorites"
+                className="rounded-[6px] px-3 py-2 text-sm text-[#A3A3A3] transition-colors hover:text-white"
+              >
+                Favorites
+              </Link>
+              <Link
+                href="/leaderboard"
+                className="rounded-[6px] px-3 py-2 text-sm text-[#A3A3A3] transition-colors hover:text-white"
+              >
+                Leaderboard
+              </Link>
+              <Link
                 href="/create"
                 className="rounded-[6px] bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition-all duration-150 hover:bg-[#1D4ED8] active:bg-[#1E40AF]"
               >
                 Create Agent
               </Link>
+              <NotificationBell />
               <UserMenu />
             </nav>
 
@@ -173,6 +205,8 @@ export default function Header() {
             className="border-t border-[#2A3A4E] bg-[#000000] px-4 py-4 md:hidden"
           >
             <nav className="flex flex-col gap-3">
+              <Link href="/explore" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm text-[#A3A3A3] hover:text-white">Explore</Link>
+              <Link href="/favorites" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm text-[#A3A3A3] hover:text-white">Favorites</Link>
               <Link
                 href="/create"
                 onClick={() => setMobileMenuOpen(false)}

@@ -52,7 +52,9 @@ export async function GET(req: NextRequest) {
         }),
       ]);
 
-      return NextResponse.json({ agents, total, hasMore: offset + limit < total });
+      const response = NextResponse.json({ agents, total, hasMore: offset + limit < total });
+      response.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
+      return response;
     } catch (err) {
       console.error("GET /api/agents DB error:", err);
       // Fall through to mock
@@ -88,7 +90,9 @@ export async function GET(req: NextRequest) {
   }
 
   const total = agents.length;
-  return NextResponse.json({ agents: agents.slice(offset, offset + limit), total, hasMore: offset + limit < total });
+  const response = NextResponse.json({ agents: agents.slice(offset, offset + limit), total, hasMore: offset + limit < total });
+  response.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
+  return response;
 }
 
 export async function POST(req: NextRequest) {

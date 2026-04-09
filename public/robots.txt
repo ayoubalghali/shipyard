@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /settings
+Disallow: /history
+Disallow: /creator/dashboard
+
+Sitemap: https://shipyard.ai/sitemap.xml

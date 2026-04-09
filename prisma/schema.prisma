@@ -24,6 +24,7 @@ model User {
   withdrawn          Float     @default(0)
   is_verified        Boolean   @default(false)
   verification_date  DateTime?
+  is_admin           Boolean   @default(false)
 
   // NextAuth fields
   emailVerified      DateTime?
@@ -34,8 +35,11 @@ model User {
   executions         Execution[]
   earnings           Earning[]
   favorites          Favorite[]
+  reviews            Review[]
   accounts           Account[]
   sessions           Session[]
+  notifications      Notification[]
+  api_keys           ApiKey[]
 
   created_at         DateTime  @default(now())
   updated_at         DateTime  @updatedAt
@@ -105,6 +109,7 @@ model Agent {
 
   // Visibility
   is_public      Boolean  @default(true)
+  is_featured    Boolean  @default(false)
   status         String   @default("published")
 
   // Relations
@@ -113,6 +118,7 @@ model Agent {
   executions     Execution[]
   earnings       Earning[]
   favorites      Favorite[]
+  reviews        Review[]
 
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
@@ -167,6 +173,59 @@ model Earning {
   created_at   DateTime  @default(now())
 
   @@index([creator_id])
+  @@index([agent_id])
+}
+
+// Review (user rating + comment on an agent)
+// API Key for programmatic agent access
+model ApiKey {
+  id           String    @id @default(cuid())
+  user_id      String
+  name         String
+  key_hash     String    @unique          // SHA-256 of the raw key — never store plaintext
+  key_prefix   String                    // First 8 chars shown in UI (e.g. "sk_live_")
+  last_used_at DateTime?
+  expires_at   DateTime?
+  revoked      Boolean   @default(false)
+  created_at   DateTime  @default(now())
+
+  user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
+// Notification
+model Notification {
+  id         String   @id @default(cuid())
+  user_id    String
+  type       String   // "review" | "execution" | "earning" | "system" | "follow"
+  title      String
+  body       String
+  link       String?
+  read       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, read])
+  @@index([user_id, created_at])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+
+  agent_id   String
+  agent      Agent    @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  rating     Int      // 1-5
+  comment    String?  @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([user_id, agent_id])
   @@index([agent_id])
 }
 

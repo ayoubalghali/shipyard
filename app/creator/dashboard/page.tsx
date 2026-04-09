@@ -11,6 +11,7 @@ import AgentsTable from "@/components/dashboard/AgentsTable";
 import EarningsTable from "@/components/dashboard/EarningsTable";
 import AgentAnalytics from "@/components/dashboard/AgentAnalytics";
 import StripeSettings from "@/components/dashboard/StripeSettings";
+import AnalyticsPanel from "@/components/dashboard/AnalyticsPanel";
 
 // ---- Types ---- //
 type AgentStatus = "published" | "draft" | "archived";
@@ -136,7 +137,7 @@ export default function CreatorDashboardPage() {
   return (
     <div className="min-h-screen bg-black">
       <Header />
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-8">
+      <main id="main-content" className="mx-auto max-w-7xl px-4 py-10 sm:px-8">
         {/* Page heading */}
         <div className="mb-8 flex items-start justify-between">
           <div>
@@ -200,15 +201,24 @@ export default function CreatorDashboardPage() {
             {/* My agents table */}
             <AgentsTable
               agents={data.agents}
-              onArchive={(id) => console.log("archive", id)}
-              onUnarchive={(id) => console.log("unarchive", id)}
+              onArchive={async (id) => {
+                await fetch(`/api/agents/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "archived" }) });
+              }}
+              onUnarchive={async (id) => {
+                await fetch(`/api/agents/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "published" }) });
+              }}
             />
 
             {/* Recent earnings */}
             <EarningsTable earnings={data.recentEarnings} />
 
-            {/* Per-agent analytics */}
+            {/* Per-agent analytics (mock data) */}
             <AgentAnalytics data={data.agentAnalytics} />
+
+            {/* Live analytics from DB */}
+            <section>
+              <AnalyticsPanel />
+            </section>
 
             {/* Stripe settings */}
             <section>

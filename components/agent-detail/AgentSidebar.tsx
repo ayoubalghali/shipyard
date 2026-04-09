@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { Agent, Creator } from "@/lib/types";
 import { useState } from "react";
+import FavoriteButton from "@/components/agents/FavoriteButton";
+import EmbedPanel from "@/components/agent-detail/EmbedPanel";
 
 interface AgentSidebarProps {
   agent: Agent;
   creator: Creator;
   related: Agent[];
+  isOwner?: boolean;
 }
 
 function StarRating({ rating }: { rating: number }) {
@@ -32,9 +35,10 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-export default function AgentSidebar({ agent, creator, related }: AgentSidebarProps) {
-  const [saved, setSaved] = useState(false);
+export default function AgentSidebar({ agent, creator, related, isOwner = false }: AgentSidebarProps) {
   const [copied, setCopied] = useState(false);
+  const [cloning, setCloning] = useState(false);
+  const [cloneMsg, setCloneMsg] = useState("");
 
   const handleShare = async () => {
     try {
@@ -46,8 +50,23 @@ export default function AgentSidebar({ agent, creator, related }: AgentSidebarPr
     }
   };
 
-  const handleSave = () => {
-    setSaved((prev) => !prev);
+  const handleClone = async () => {
+    setCloning(true);
+    setCloneMsg("");
+    try {
+      const res = await fetch(`/api/agents/${agent.id}/clone`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      const data = await res.json() as { agent?: { id: string }; error?: string };
+      if (res.ok && data.agent) {
+        setCloneMsg(`Cloned! Edit it at /agent/${data.agent.id}/edit`);
+      } else {
+        setCloneMsg(data.error ?? "Clone failed");
+      }
+    } catch {
+      setCloneMsg("Clone failed");
+    } finally {
+      setCloning(false);
+      setTimeout(() => setCloneMsg(""), 4000);
+    }
   };
 
   return (
@@ -117,7 +136,7 @@ export default function AgentSidebar({ agent, creator, related }: AgentSidebarPr
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <button
           onClick={handleShare}
           className="flex flex-1 items-center justify-center gap-2 rounded-[6px] border border-[#2A3A4E] px-3 py-2 text-sm text-[#00D9FF] transition-all hover:border-[#2563EB] hover:bg-[#0A0E27]"
@@ -128,22 +147,35 @@ export default function AgentSidebar({ agent, creator, related }: AgentSidebarPr
           </svg>
           {copied ? "Copied!" : "Share"}
         </button>
+        <FavoriteButton agentId={agent.id} />
+        {/* Clone button — available to all */}
         <button
-          onClick={handleSave}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-[6px] border px-3 py-2 text-sm transition-all ${
-            saved
-              ? "border-[#2563EB] bg-[#0A0E27] text-[#00D9FF]"
-              : "border-[#2A3A4E] text-[#A3A3A3] hover:border-[#2563EB] hover:text-[#00D9FF]"
-          }`}
-          aria-pressed={saved}
-          aria-label={saved ? "Remove from saved" : "Save to list"}
+          onClick={handleClone}
+          disabled={cloning}
+          className="flex items-center justify-center gap-1.5 rounded-[6px] border border-[#2A3A4E] px-3 py-2 text-sm text-[#A3A3A3] transition-all hover:border-[#2563EB] hover:text-white disabled:opacity-50"
+          title="Fork this agent to your account"
         >
-          <svg className="h-4 w-4" fill={saved ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
-          {saved ? "Saved" : "Save"}
+          {cloning ? "Cloning…" : "Clone"}
         </button>
+        {cloneMsg && <p className="text-xs text-[#10B981] col-span-2">{cloneMsg}</p>}
+        {isOwner && (
+          <Link
+            href={`/agent/${agent.id}/edit`}
+            className="flex items-center justify-center gap-1.5 rounded-[6px] border border-[#2A3A4E] px-3 py-2 text-sm text-[#A3A3A3] transition-all hover:border-[#2563EB] hover:text-white"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+            </svg>
+            Edit
+          </Link>
+        )}
       </div>
+
+      {/* Embed widget */}
+      <EmbedPanel agentId={agent.id} agentName={agent.name} />
 
       {/* Related Agents */}
       {related.length > 0 && (

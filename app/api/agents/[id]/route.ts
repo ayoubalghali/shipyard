@@ -34,7 +34,10 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
         ? agent.creator.id === (await db.user.findUnique({ where: { email: session.user.email } }))?.id
         : false;
 
-      return NextResponse.json({ agent, creator: agent.creator, isOwner, related });
+      const res = NextResponse.json({ agent, creator: agent.creator, isOwner, related });
+      // Only cache for unauthenticated (public) viewers; private/owner views are not cached
+      if (!isOwner) res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=120");
+      return res;
     }
 
     // Mock fallback
@@ -43,7 +46,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 
     const related = MOCK_AGENTS.filter((a) => a.category === agent.category && a.id !== agent.id).slice(0, 4);
 
-    return NextResponse.json({
+    const mockRes = NextResponse.json({
       agent: {
         ...agent,
         prompt: `You are a helpful AI assistant specializing in ${agent.name}.\n\nWhen given user input, provide a detailed, high-quality response that:\n- Is accurate and well-structured\n- Uses clear language appropriate for the task\n- Provides actionable output the user can use immediately\n\n{{input}}`,
@@ -59,6 +62,8 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
       isOwner: false,
       related,
     });
+    mockRes.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=120");
+    return mockRes;
   } catch (error) {
     console.error("GET /api/agents/[id] error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SessionProvider from "@/components/auth/SessionProvider";
+import MobileBottomNav from "@/components/layout/MobileBottomNav";
 
 const BASE_URL = process.env.NEXTAUTH_URL ?? "https://shipyard.ai";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
+  manifest: "/manifest.json",
   title: {
     default: "Shipyard — Build & Share AI Agents",
     template: "%s — Shipyard",
@@ -54,11 +56,36 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
           rel="stylesheet"
         />
+        {/* PWA theme color */}
+        <meta name="theme-color" content="#2563EB" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Shipyard" />
       </head>
       <body className="antialiased bg-black text-white min-h-screen">
+        {/* Skip to main content — WCAG 2.4.1 */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-[#2563EB] focus:text-white focus:rounded-md focus:text-sm focus:font-medium focus:outline-none"
+        >
+          Skip to main content
+        </a>
         <SessionProvider>
           {children}
+          <MobileBottomNav />
         </SessionProvider>
+        {/* Register service worker */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function(){});
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

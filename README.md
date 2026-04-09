@@ -1,36 +1,144 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Shipyard — No-Code AI Agent Marketplace
 
-## Getting Started
+> Build, share, and monetize AI agents without writing a single line of code.
 
-First, run the development server:
+Built with **Next.js 14**, **TypeScript**, **Tailwind CSS**, **Prisma + PostgreSQL (Supabase)**, **NextAuth.js**, and **Stripe Connect**.
+
+---
+
+## Features
+
+- **Agent Builder** — 4-step visual wizard (info → parameters → prompt → preview)
+- **Marketplace** — Browse, search, filter, and favorite agents
+- **Run Agents** — Server-Sent Events streaming execution with Ollama or Claude
+- **Creator Dashboard** — Earnings, analytics charts, agent management
+- **Stripe Connect** — Payouts to creators via Stripe Standard Connect
+- **Reviews & Ratings** — Star ratings with distribution bars
+- **Execution History** — Paginated run history with input/output viewer
+- **Admin Panel** — Platform stats, agent moderation, user management
+- **PWA** — Installable with offline support via service worker
+- **WCAG Accessible** — Skip links, aria-labels, reduced-motion support
+
+---
+
+## Quick Start
 
 ```bash
+# 1. Install dependencies (also runs prisma generate)
+npm install
+
+# 2. Copy environment template
+cp .env.example .env
+# Fill in: DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL, GOOGLE_CLIENT_ID,
+#          GOOGLE_CLIENT_SECRET, STRIPE_SECRET_KEY, STRIPE_CONNECT_CLIENT_ID,
+#          ANTHROPIC_API_KEY (optional)
+
+# 3. Push schema to your database
+npx prisma db push
+
+# 4. Start development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment Variables
 
-## Learn More
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes* | PostgreSQL connection string (Supabase) |
+| `NEXTAUTH_SECRET` | Yes | Random secret for NextAuth JWT signing |
+| `NEXTAUTH_URL` | Yes | Your app URL (e.g. `http://localhost:3000`) |
+| `GOOGLE_CLIENT_ID` | Yes | Google OAuth app client ID |
+| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth app client secret |
+| `STRIPE_SECRET_KEY` | Optional | Stripe secret key for real payouts |
+| `STRIPE_CONNECT_CLIENT_ID` | Optional | Stripe Connect platform client ID |
+| `ANTHROPIC_API_KEY` | Optional | Enable Claude models for execution |
+| `ADMIN_EMAIL` | Optional | Email of bootstrap admin (no-DB fallback) |
 
-To learn more about Next.js, take a look at the following resources:
+*Without `DATABASE_URL`, the app runs in mock-data mode — fully functional for demos.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployment (Railway / Render)
 
-## Deploy on Vercel
+```bash
+# Build
+npm run build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Start production server
+npm start
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Database backup
+./scripts/backup-db.sh
+```
+
+The app outputs a [standalone Next.js build](https://nextjs.org/docs/pages/api-reference/next-config-js/output) suitable for Docker or Railway.
+
+Health check endpoint: `GET /api/health`
+
+---
+
+## Admin Access
+
+1. Sign in with Google.
+2. In Supabase, set `is_admin = true` on your user row, **or** set `ADMIN_EMAIL=your@email.com` env var.
+3. Navigate to `/admin`.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript (strict) |
+| Styling | Tailwind CSS |
+| Database ORM | Prisma |
+| Database | PostgreSQL (Supabase) |
+| Auth | NextAuth.js v4 (Google OAuth) |
+| Payments | Stripe Connect Standard |
+| AI | Ollama (local) + Anthropic Claude |
+| Animation | Framer Motion |
+| Charts | Recharts |
+| State | Zustand |
+| PWA | Web App Manifest + Service Worker |
+
+---
+
+## Project Structure
+
+```
+app/
+  agent/[id]/       # Agent detail + execution
+  admin/            # Admin panel (stats, agents, users)
+  api/              # All API routes
+  create/           # Agent builder
+  creator/dashboard # Creator dashboard
+  explore/          # Marketplace
+  favorites/        # Saved agents
+  history/          # Run history
+  search/           # Search results
+  settings/         # User profile & Stripe connect
+components/
+  agent-detail/     # Execution output, sidebar, reviews
+  auth/             # UserMenu, SessionProvider
+  builder/          # 4-step agent builder steps
+  dashboard/        # Creator dashboard widgets
+  layout/           # Header, Footer, MobileBottomNav
+  reviews/          # StarRating, AgentReviews
+lib/
+  auth.ts           # NextAuth config
+  db.ts             # Prisma client with DB_AVAILABLE guard
+  mockData.ts       # Mock agents for demo mode
+  types.ts          # Shared TypeScript types
+prisma/
+  schema.prisma     # Database schema
+scripts/
+  backup-db.sh      # Database backup utility
+store/
+  agentStore.ts     # Zustand store for explore/search state
+  builderStore.ts   # Zustand store for agent builder
+```

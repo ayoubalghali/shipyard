@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma, DB_AVAILABLE } from "@/lib/db";
+import { notifyReview } from "@/lib/notify";
 
 type RouteContext = { params: { id: string } };
 
@@ -80,14 +81,19 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     });
 
     // Recalculate and persist agent average rating
-    const agg = await prisma.review.aggregate({
-      where: { agent_id: params.id },
-      _avg: { rating: true },
-    });
+    const [agg, agent] = await Promise.all([
+      prisma.review.aggregate({ where: { agent_id: params.id }, _avg: { rating: true } }),
+      prisma.agent.findUnique({ where: { id: params.id }, select: { creator_id: true, name: true } }),
+    ]);
     await prisma.agent.update({
       where: { id: params.id },
       data: { rating: Math.round((agg._avg.rating ?? 0) * 10) / 10 },
     });
+
+    // Notify the agent creator (don't notify if they review their own agent)
+    if (agent && agent.creator_id !== dbUser.id) {
+      await notifyReview(agent.creator_id, agent.name, params.id, rating);
+    }
 
     return NextResponse.json({ review }, { status: 201 });
   } catch (err) {

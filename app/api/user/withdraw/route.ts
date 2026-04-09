@@ -37,14 +37,45 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Update withdrawn balance
-      // Real impl: call Stripe Connect Transfers API here
+      // Initiate a Stripe Transfer to the creator's connected account
+      let stripePayoutId = `po_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+      if (stripeSecretKey) {
+        try {
+          const amountCents = Math.round(body.amount * 100);
+          const transferRes = await fetch("https://api.stripe.com/v1/transfers", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${stripeSecretKey}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              amount: amountCents.toString(),
+              currency: "usd",
+              destination: user.stripe_account_id,
+              description: "Shipyard creator earnings withdrawal",
+            }),
+          });
+          const transferData = await transferRes.json() as { id?: string; error?: { message?: string } };
+          if (transferData.id) {
+            stripePayoutId = transferData.id;
+          } else {
+            const errMsg = transferData.error?.message ?? "Stripe Transfer failed";
+            return NextResponse.json({ error: errMsg }, { status: 400 });
+          }
+        } catch (stripeErr) {
+          console.error("[withdraw] Stripe Transfer error:", stripeErr);
+          return NextResponse.json({ error: "Stripe transfer failed" }, { status: 500 });
+        }
+      }
+
+      // Record the withdrawal
       await db.user.update({
         where: { id: user.id },
         data: { withdrawn: { increment: body.amount } },
       });
 
-      const payoutId = `po_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const payoutId = stripePayoutId;
 
       return NextResponse.json({
         payout_id: payoutId,

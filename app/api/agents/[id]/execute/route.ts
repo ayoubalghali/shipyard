@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma, DB_AVAILABLE } from "@/lib/db";
 import { MOCK_AGENTS } from "@/lib/mockData";
+import { notifyEarning, notifyExecution } from "@/lib/notify";
+import { verifyApiKey } from "@/lib/apiKeyAuth";
 
 export const runtime = "nodejs";
 
@@ -262,16 +264,22 @@ export async function POST(
   const agentDescription = agentRow?.description ?? mockAgent!.description;
   const agentCreatorId = agentRow?.creator_id ?? null;
 
-  // Get authenticated user id if available
+  // Get authenticated user id — from session OR Bearer API key
   let userId: string | null = null;
   try {
-    const session = await getServerSession(authOptions);
-    if (session?.user?.email && DB_AVAILABLE) {
-      const dbUser = await prisma.user.findUnique({
-        where: { email: session.user.email },
-        select: { id: true },
-      });
-      userId = (dbUser?.id as string) ?? null;
+    // API key auth takes priority (for programmatic access)
+    const apiKeyUserId = await verifyApiKey(req);
+    if (apiKeyUserId) {
+      userId = apiKeyUserId;
+    } else {
+      const session = await getServerSession(authOptions);
+      if (session?.user?.email && DB_AVAILABLE) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: session.user.email },
+          select: { id: true },
+        });
+        userId = (dbUser?.id as string) ?? null;
+      }
     }
   } catch {
     // Non-fatal — proceed without user id
@@ -410,6 +418,10 @@ export async function POST(
 
             // Create earning record for the agent's creator
             if (executionStatus === "success" && agentCreatorId) {
+              const agentRecord = await prisma.agent.findUnique({
+                where: { id: params.id },
+                select: { name: true },
+              });
               await prisma.earning.create({
                 data: {
                   creator_id: agentCreatorId,
@@ -420,6 +432,14 @@ export async function POST(
                   status: "pending",
                 },
               });
+              // Notify creator of earning + execution
+              if (agentRecord) {
+                await notifyEarning(agentCreatorId, agentRecord.name, 0.05);
+                // Only notify execution when someone else ran it
+                if (userId && userId !== agentCreatorId) {
+                  await notifyExecution(agentCreatorId, agentRecord.name, params.id);
+                }
+              }
             }
 
             // Increment agent usage count

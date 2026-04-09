@@ -32,11 +32,19 @@ export default function StripeSettings({ stripeStatus }: StripeSettingsProps) {
 
   const handleConnectStripe = async () => {
     setConnectingStripe(true);
-    // In production: call /api/stripe/connect-account → redirect to Stripe OAuth
-    await new Promise((r) => setTimeout(r, 1000));
-    setConnectingStripe(false);
-    // Show placeholder
-    window.alert("Stripe Connect OAuth flow would open here.\n\nFor production: set STRIPE_SECRET_KEY and call the /api/stripe/connect endpoint.");
+    try {
+      const res = await fetch("/api/stripe/connect");
+      const data = await res.json() as { url?: string; error?: string };
+      if (data.url) {
+        window.location.href = data.url; // redirect to Stripe OAuth
+      } else {
+        window.alert(data.error ?? "Could not start Stripe Connect. Check that STRIPE_CLIENT_ID is set.");
+        setConnectingStripe(false);
+      }
+    } catch {
+      window.alert("Network error. Try again.");
+      setConnectingStripe(false);
+    }
   };
 
   return (

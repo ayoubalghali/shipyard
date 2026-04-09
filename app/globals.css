@@ -58,10 +58,39 @@ body {
   color: #FFFFFF;
 }
 
-/* Focus visible ring */
+/* Focus visible ring — WCAG 2.4.7 Focus Visible */
 :focus-visible {
   outline: 2px solid #00D9FF;
   outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Buttons and links: minimum 44×44px touch target — WCAG 2.5.5 */
+button,
+[role="button"],
+a {
+  min-height: 0; /* don't force height, let padding handle it */
+}
+
+/* Reduce motion for users who prefer it — WCAG 2.3.3 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Mobile bottom nav clearance — applied to page wrappers on mobile */
+@media (max-width: 767px) {
+  /* Give pages enough room above the fixed 56px bottom nav */
+  main,
+  [role="main"] {
+    padding-bottom: calc(56px + 1rem);
+  }
 }
 
 @layer utilities {
